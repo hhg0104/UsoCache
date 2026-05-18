@@ -1,9 +1,10 @@
-package function.memorylock;
+package function.memory;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import function.CacheFunc;
+import function.CacheProperties;
+import module.CacheFunc;
 import org.ehcache.Cache;
 import org.ehcache.CacheManager;
 import org.ehcache.config.CacheConfiguration;
@@ -19,20 +20,16 @@ import java.util.function.Supplier;
 
 public class MemoryCacheFunc implements CacheFunc {
 
-    private static final int HEAP_SIZE = 10;
-    private static final int EXPIRY_SECONDS = 60;
-
     private CacheManager cacheManager;
     private Cache<String, String> memoryCache;
 
     private Map<String, ReentrantLock> lockMap = new ConcurrentHashMap<>();
-
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    private long lockTimeout = 5;
-    private TimeUnit lockTimeoutUnit = TimeUnit.SECONDS;
+    private CacheProperties cacheProperties;
 
-    public MemoryCacheFunc(String cacheName) {
+    public MemoryCacheFunc(String cacheName, CacheProperties cacheProperties) {
+        this.cacheProperties = cacheProperties;
         this.cacheManager = CacheManagerBuilder
                 .newCacheManagerBuilder().build();
         this.cacheManager.init();
@@ -42,11 +39,21 @@ public class MemoryCacheFunc implements CacheFunc {
                 EventType.EXPIRED
         );
 
+        int heapSize = this.cacheProperties.heapSize();
+        int expirySeconds = this.cacheProperties.expirySeconds();
+
+        if (heapSize <= 0) {
+            throw new RuntimeException("'Heap size' cannot be minus.");
+        }
+        if (expirySeconds <= 0) {
+            throw new RuntimeException("'Cache expiry seconds' cannot be minus.");
+        }
+
         CacheConfiguration<String, String> cacheConfig = CacheConfigurationBuilder.newCacheConfigurationBuilder(
                         String.class, String.class,
-                        ResourcePoolsBuilder.heap(HEAP_SIZE))
+                        ResourcePoolsBuilder.heap(heapSize))
                 .withExpiry(
-                        ExpiryPolicyBuilder.timeToLiveExpiration(Duration.ofSeconds(EXPIRY_SECONDS))
+                        ExpiryPolicyBuilder.timeToLiveExpiration(Duration.ofSeconds(expirySeconds))
                 )
                 .withService(listenerConfig)
                 .build();
@@ -54,15 +61,10 @@ public class MemoryCacheFunc implements CacheFunc {
         this.memoryCache = this.cacheManager.createCache(cacheName, cacheConfig);
     }
 
-    public MemoryCacheFunc(long lockTimeout, TimeUnit lockTimeoutUnit) {
-        this.lockTimeout = lockTimeout;
-        this.lockTimeoutUnit = lockTimeoutUnit;
-    }
-
     private boolean trylock(String key) {
         try {
             return this.lockMap.putIfAbsent(key, new ReentrantLock())
-                    .tryLock(this.lockTimeout, this.lockTimeoutUnit);
+                    .tryLock(this.cacheProperties.cacheLockSeconds(), TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }

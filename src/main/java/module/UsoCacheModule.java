@@ -1,10 +1,8 @@
 package module;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import function.CacheFunc;
-import function.KeyGen;
+import keygen.KeyGen;
 
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class UsoCacheModule {

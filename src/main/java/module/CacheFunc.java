@@ -1,4 +1,4 @@
-package function;
+package module;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 

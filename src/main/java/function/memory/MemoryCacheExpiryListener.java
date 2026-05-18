@@ -1,4 +1,4 @@
-package function.memorylock;
+package function.memory;
 
 import org.ehcache.event.CacheEvent;
 import org.ehcache.event.CacheEventListener;

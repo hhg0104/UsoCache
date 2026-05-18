@@ -1,4 +1,4 @@
-package function;
+package keygen;
 
 @FunctionalInterface
 public interface KeyGen {

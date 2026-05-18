@@ -1,4 +1,4 @@
-package function;
+package keygen;
 
 public class HashKeyGen implements KeyGen {
     @Override
